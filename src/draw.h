@@ -3,6 +3,6 @@
 
 #include <raylib.h>
 
-void draw(Camera2D *camera);
+typedef void (*draw_t)(Camera2D *camera);
 
 #endif // DRAW_H_

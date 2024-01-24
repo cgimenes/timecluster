@@ -5,7 +5,7 @@ CFLAGS=-Wall -Wextra -ggdb
 all: build/timecluster
 
 build/timecluster: src/timecluster.c build/libdraw.so
-	$(CC) $(CFLAGS) -o $@ $< $(LIBS) -L./build/ -ldraw 
+	$(CC) $(CFLAGS) -o $@ $< $(LIBS) -ldl
 
 build/libdraw.so: src/draw.c src/draw.h
 	$(CC) $(CFLAGS) -o $@ -fPIC -shared $< $(LIBS)
