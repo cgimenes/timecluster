@@ -1,15 +1,17 @@
-CC=gcc
-LIBRARIES=-lraylib
-CFLAGS=-Wall -g
+CC=clang
+LIBS=-lraylib
+CFLAGS=-Wall -Wextra -ggdb
 
-all: main
+all: build/timecluster
 
-main: src/main.c build/draw.o
-	$(CC) $(CFLAGS) $(LIBRARIES) -o build/$@ $^
+build/timecluster: src/timecluster.c build/libdraw.so
+	$(CC) $(CFLAGS) -o $@ $< $(LIBS) -L./build/ -ldraw 
 
-build/draw.o: src/draw.c src/draw.h
-	$(CC) $(CFLAGS) $(LIBRARIES) -c $< -o build/draw.o
+build/libdraw.so: src/draw.c src/draw.h
+	$(CC) $(CFLAGS) -o $@ -fPIC -shared $< $(LIBS)
+
+run: all
+	LD_LIBRARY_PATH=./build/ build/timecluster
 
 clean:
-	rm build/main
-	rm build/*.o
+	@rm build/timecluster build/*.o build/*.so

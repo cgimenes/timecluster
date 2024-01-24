@@ -7,7 +7,7 @@ int main ()
     const int screenWidth = 800;
     const int screenHeight = 450;
 
-    InitWindow(screenWidth, screenHeight, "Timecluster");
+    InitWindow(screenWidth, screenHeight, "TimeCluster");
 
     Camera2D camera = { 0 };
     camera.zoom = 1.0f;
