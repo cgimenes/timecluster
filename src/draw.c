@@ -1,16 +1,34 @@
-#include "raylib.h"
-#include "raymath.h"
-#include "rlgl.h"
+#include <raylib.h>
+#include <raymath.h>
+#include <rlgl.h>
+#include "draw.h"
 
-void draw(Camera2D *camera)
+void init(TimeClusterState *state)
+{
+    const int screenWidth = 800;
+    const int screenHeight = 800;
+
+    InitWindow(screenWidth, screenHeight, "TimeCluster");
+
+    Camera2D camera = { 0 };
+    camera.zoom = 1.0f;
+
+    state->camera = camera;
+    // RenderTexture2D target = LoadRenderTexture(1920, 1080);
+    // SetTextureFilter(target.texture, TEXTURE_FILTER_BILINEAR);
+
+    SetTargetFPS(60);
+}
+
+void draw(TimeClusterState *state)
 {
     // Translate based on mouse right click
     if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
     {
         Vector2 delta = GetMouseDelta();
-        delta = Vector2Scale(delta, -1.0f/camera->zoom);
+        delta = Vector2Scale(delta, -1.0f/state->camera.zoom);
 
-        camera->target = Vector2Add(camera->target, delta);
+        state->camera.target = Vector2Add(state->camera.target, delta);
     }
 
     // Zoom based on mouse wheel
@@ -18,43 +36,42 @@ void draw(Camera2D *camera)
     if (wheel != 0)
     {
         // Get the world point that is under the mouse
-        Vector2 mouseWorldPos = GetScreenToWorld2D(GetMousePosition(), *camera);
+        Vector2 mouseWorldPos = GetScreenToWorld2D(GetMousePosition(), state->camera);
         
         // Set the offset to where the mouse is
-        camera->offset = GetMousePosition();
+        state->camera.offset = GetMousePosition();
 
         // Set the target to match, so that the camera maps the world space point 
         // under the cursor to the screen space point under the cursor at any zoom
-        camera->target = mouseWorldPos;
+        state->camera.target = mouseWorldPos;
 
         // Zoom increment
         const float zoomIncrement = 0.125f;
 
-        camera->zoom += (wheel*zoomIncrement);
-        if (camera->zoom < zoomIncrement) camera->zoom = zoomIncrement;
+        state->camera.zoom += (wheel*zoomIncrement);
+        if (state->camera.zoom < zoomIncrement) state->camera.zoom = zoomIncrement;
     }
 
     BeginDrawing();
     {
         ClearBackground(WHITE);
 
-        BeginMode2D(*camera);
+        BeginMode2D(state->camera);
         {
-            // Draw the 3d grid, rotated 90 degrees and centered around 0,0 
-            // just so we have something in the XY plane
-            rlPushMatrix();
-            {
-                rlTranslatef(0, 25*50, 0);
-                rlRotatef(90, 1, 0, 0);
-                DrawGrid(100, 50);
-            }
-            rlPopMatrix();
+            // TODO draw everything and check if it has good performance
+            // otherwise, try to scale/pan without BeginMode2D
+            // lastly, try drawing texture
+            DrawRectangleLines(0, 0, 300, 300, BLACK);
 
-            // Draw a reference circle
-            DrawCircle(100, 100, 50, BLUE);
+            DrawRectangleLines(500, 500, 300, 300, BLACK);
+
+            DrawRectangleLines(500, 500, 300, 300, BLACK);
+
+            DrawText("Implement point selection", 0, 0, 30, RED);
         }    
         EndMode2D();
     }
     
     EndDrawing();
 }
+

@@ -3,6 +3,13 @@
 
 #include <raylib.h>
 
-typedef void (*draw_t)(Camera2D *camera);
+typedef struct TimeClusterState {
+    Camera2D camera;
+    // RenderTexture2D *target;
+} TimeClusterState;
+
+typedef void (*draw_t)(TimeClusterState *state);
+
+typedef void (*init_t)(TimeClusterState *state);
 
 #endif // DRAW_H_

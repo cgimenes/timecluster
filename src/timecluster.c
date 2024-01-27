@@ -9,13 +9,14 @@
 
 #include "draw.h"
 
+init_t init = NULL;
 draw_t draw = NULL;
 const char *libdraw_file_name = "libdraw.so";
 const char *libdraw_file_path = "build/libdraw.so";
 time_t libdraw_file_mod_time = 0;
 void *libdraw = NULL;
 
-bool load_draw_function()
+bool reload_lib()
 {
     if (libdraw != NULL) dlclose(libdraw);
 
@@ -23,6 +24,12 @@ bool load_draw_function()
     if (libdraw == NULL) {
         fprintf(stderr, "ERROR: could not load %s: %s", libdraw_file_name, dlerror());
         return false;
+    }
+
+    init = dlsym(libdraw, "init");
+    if (init == NULL) {
+        fprintf(stderr, "ERROR: could not find init symbol in %s: %s", libdraw_file_name, dlerror());
+        return 1;
     }
 
     draw = dlsym(libdraw, "draw");
@@ -43,30 +50,24 @@ bool hot_reload()
         // I may change it for a "trigger file" in the future. Creating a specific file after
         // compilation finishes and checking its mod time here
         sleep(1);
-        return load_draw_function();
+        return reload_lib();
     }
     return true;
 }
 
 int main()
 {
-    if (!load_draw_function()) return 1;
+    if (!reload_lib()) return 1;
 
-    const int screenWidth = 800;
-    const int screenHeight = 450;
-
-    InitWindow(screenWidth, screenHeight, "TimeCluster");
-
-    Camera2D camera = { 0 };
-    camera.zoom = 1.0f;
-
-    SetTargetFPS(60);
+    TimeClusterState state;
+    init(&state);
 
     while (!WindowShouldClose())
     {
         if (!hot_reload()) return 1;
+        // 1:53
 
-        draw(&camera);
+        draw(&state);
     }
 
     CloseWindow();
