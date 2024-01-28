@@ -5,14 +5,12 @@
 
 #define N 100
 
-typedef float TimeseriesData[N];
-typedef Vector2 DRData[N];
-
 typedef struct TimeClusterState {
   // RenderTexture2D *target;
-  Camera2D camera;
-  TimeseriesData ts_data;
-  DRData dr_data;
+  Camera2D camera1;
+  Camera2D camera2;
+  float ts_data[N];
+  Vector2 dr_data[N];
   int data_count;
   bool drawing_mode;
   Rectangle selection;
