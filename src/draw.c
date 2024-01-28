@@ -2,7 +2,6 @@
 #include <raylib.h>
 #include <raymath.h>
 #include <rlgl.h>
-// #include <stdio.h>
 
 #define RECT_SIZE 4.0f
 #define MIDDLE_RECT_POINT 2.0f
@@ -48,33 +47,36 @@ void draw_timeseries(TimeClusterState *state) {
   for (int i = 0; i < state->data_count; i++) {
     float x = i * X_SPACING;
     float y = state->ts_data[i];
+    Rectangle rec = {x, y, RECT_SIZE, RECT_SIZE};
 
     // TODO change to DrawLineStrip
     if (i > 0)
       DrawLine((i - 1) * X_SPACING + MIDDLE_RECT_POINT,
                state->ts_data[i - 1] + MIDDLE_RECT_POINT, x + MIDDLE_RECT_POINT,
                y + MIDDLE_RECT_POINT, BLACK);
+
+    draw_rectangle_lines_ex(rec, BLACK);
   }
-  // TODO maybe this isn't good :)
   for (int i = 0; i < state->data_count; i++) {
+    if (! state->selected_data[i]) {
+      continue;
+    }
+
     float x = i * X_SPACING;
     float y = state->ts_data[i];
 
-    Rectangle rec = { x, y, RECT_SIZE, RECT_SIZE };
-    if (CheckCollisionRecs(state->selection, rec)) {
-      DrawRectangleRec(rec, YELLOW);
-    }
+    Rectangle rec = {x, y, RECT_SIZE, RECT_SIZE};
+    DrawRectangleRec(rec, YELLOW);
     draw_rectangle_lines_ex(rec, BLACK);
   }
 }
 
 void draw_hud(TimeClusterState *state) {
   // char str[80];
-  //
-  // if (state->drawing_mode) {
-  //   DrawText("Drawing", 0, 35, 20, RED);
+  // for (int i = 0; i < state->data_count; i++) {
+  //   sprintf(str, "%d: %d", i, state->selected_data[i]);
+  //   DrawText(str, 0, i * 22, 20, RED);
   // }
-  // DrawText(str, 0, 0, 20, RED);
 }
 
 void handle_pan(TimeClusterState *state) {
@@ -126,6 +128,14 @@ void handle_selection(TimeClusterState *state) {
 
     if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
       state->drawing_mode = false;
+
+    for (int i = 0; i < state->data_count; i++) {
+      float x = i * X_SPACING;
+      float y = state->ts_data[i];
+      Rectangle rec = {x, y, RECT_SIZE, RECT_SIZE};
+
+      state->selected_data[i] = CheckCollisionRecs(state->selection, rec); 
+    }
   }
 }
 

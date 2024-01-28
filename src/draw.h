@@ -16,6 +16,7 @@ typedef struct TimeClusterState {
   int data_count;
   bool drawing_mode;
   Rectangle selection;
+  bool selected_data[N];
 } TimeClusterState;
 
 typedef void (*draw_t)(TimeClusterState *state);
