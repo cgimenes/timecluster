@@ -21,48 +21,23 @@ TimeClusterState init() {
   SetTraceLogLevel(LOG_DEBUG);
 
   TraceLog(LOG_DEBUG, "Initializing");
-  float ts_data[] = {113677.0f, 113657.0f, 113644.0f, 113664.0f};
-
-  int data_count = 4;
 
   TimeClusterState state;
-  state.ts_data = malloc(data_count * sizeof(float));
-  state.dr_data = malloc(data_count * sizeof(Vector2));
-  state.selected_data = malloc(data_count * sizeof(bool));
-  state.data_count = data_count;
-
-  for (int i = 0; i < data_count; i++) {
-    state.ts_data[i] = ts_data[i];
-    state.selected_data[i] = false;
-  }
+  state.data_count = 0;
 
   int screenWidth = 800;
   int screenHeight = 800;
 
   InitWindow(screenWidth, screenHeight, "TimeCluster");
 
-  TraceLog(LOG_DEBUG, "Calculating half");
-  float min = 9999999;
-  float max = 0;
-  for (int i = 0; i < state.data_count; i++) {
-    if (state.ts_data[i] < min) {
-      min = state.ts_data[i];
-    }
-
-    if (state.ts_data[i] > max) {
-      max = state.ts_data[i];
-    }
-  }
-  float half = (max - min) / 2;
-
   TraceLog(LOG_DEBUG, "Creating cameras");
 
   // TODO better default zoom
   state.camera1 = (Camera2D){
-      .offset = {0, 0}, .target = {0, min + half}, .rotation = 0, .zoom = 1.0f};
+      .offset = {0, 0}, .target = {0, 0}, .rotation = 0, .zoom = 1.0f};
 
   state.camera2 = (Camera2D){
-      .offset = {0, 0}, .target = {0, min + half}, .rotation = 0, .zoom = 1.0f};
+      .offset = {0, 0}, .target = {0, 0}, .rotation = 0, .zoom = 1.0f};
 
   state.selection_mode = false;
   state.selection = (Rectangle){0};
@@ -147,9 +122,11 @@ void draw_timeseries(TimeClusterState *state) {
 }
 
 void draw_hud(TimeClusterState *state) {
-  DrawText(state->filePath, 0, 0, 42, BLACK);
+  DrawText(state->filePath, 0, 0, 20, BLACK);
   DrawLine(0, GetScreenHeight() / 2, GetScreenWidth(), GetScreenHeight() / 2,
            FOREGROUND);
+
+  DrawFPS(GetScreenWidth() - MeasureText("60 FPS", 20) - 5, 5);
 }
 
 void handle_pan(Camera2D *camera) {
@@ -166,7 +143,8 @@ void handle_zoom(Camera2D *camera) {
   if (wheel != 0) {
     Vector2 mouseWorldPos = GetScreenToWorld2D(GetMousePosition(), *camera);
 
-    camera->offset = GetMousePosition();
+    // TODO fix this offset. Started after using offset for panel handling
+    // camera->offset = GetMousePosition();
 
     camera->target = mouseWorldPos;
 
@@ -228,8 +206,44 @@ void handle_hud(TimeClusterState *state) {
   // TODO resize panels
 }
 
+void load_file(TimeClusterState *state) {
+  TraceLog(LOG_DEBUG, "Loading file");
+  int data_count = 4;
+  float ts_data[] = {113677.0f, 113657.0f, 113644.0f, 113664.0f};
+
+  state->ts_data = malloc(data_count * sizeof(float));
+  state->dr_data = malloc(data_count * sizeof(Vector2));
+  state->selected_data = malloc(data_count * sizeof(bool));
+  state->data_count = data_count;
+
+  for (int i = 0; i < data_count; i++) {
+    state->ts_data[i] = ts_data[i];
+    state->selected_data[i] = false;
+  }
+  TraceLog(LOG_DEBUG, "File loaded");
+  
+  TraceLog(LOG_DEBUG, "Calculating min, max and half");
+  float min = 9999999;
+  float max = 0;
+  for (int i = 0; i < state->data_count; i++) {
+    if (state->ts_data[i] < min) {
+      min = state->ts_data[i];
+    }
+
+    if (state->ts_data[i] > max) {
+      max = state->ts_data[i];
+    }
+  }
+  float half = (max - min) / 2;
+
+  TraceLog(LOG_DEBUG, "Updating camera");
+  state->camera1.target = (Vector2){0, min + half};
+  state->camera2.target = (Vector2){0, min + half};
+}
+
 void handle_drop(TimeClusterState *state) {
   if (IsFileDropped()) {
+    TraceLog(LOG_DEBUG, "File dropped");
     FilePathList droppedFiles = LoadDroppedFiles();
 
     if (droppedFiles.count > 1) {
@@ -238,6 +252,7 @@ void handle_drop(TimeClusterState *state) {
       return;
     }
     TextCopy(state->filePath, droppedFiles.paths[0]);
+    load_file(state);
     UnloadDroppedFiles(droppedFiles);
   }
 }
