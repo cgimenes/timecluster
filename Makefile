@@ -1,6 +1,6 @@
 CC=clang
 LIBS=-lraylib
-CFLAGS=-Wall -Wextra
+CFLAGS=-Wall -Wextra -ggdb
 
 build: build/timecluster
 
