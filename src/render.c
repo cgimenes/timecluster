@@ -1,35 +1,77 @@
-#include "draw.h"
+#include "render.h"
+
 #include <raylib.h>
 #include <raymath.h>
 #include <rlgl.h>
 #include <stddef.h>
+#include <stdio.h>
 
-#define RECT_SIZE 4.0f
-#define MIDDLE_RECT_POINT 2.0f
+#define RAYGUI_IMPLEMENTATION
+#include "../include/raygui.h"
+
+#define RECT_SIZE 8.0f
+#define MIDDLE_RECT_POINT 4.0f
 #define MOUSE_SCALE_MARK_SIZE 8
+#define FOREGROUND BLACK
+#define BACKGROUND LIGHTGRAY
+#define PRIMARY RED
+#define SECONDARY BLUE
 
-void init(TimeClusterState *state) {
-  const int screenWidth = 800;
-  const int screenHeight = 800;
+TimeClusterState init() {
+  SetTraceLogLevel(LOG_DEBUG);
+
+  TraceLog(LOG_DEBUG, "Initializing");
+  float ts_data[] = {113677.0f, 113657.0f, 113644.0f, 113664.0f};
+
+  int data_count = 4;
+
+  TimeClusterState state;
+  state.ts_data = malloc(data_count * sizeof(float));
+  state.dr_data = malloc(data_count * sizeof(Vector2));
+  state.selected_data = malloc(data_count * sizeof(bool));
+  state.data_count = data_count;
+
+  for (int i = 0; i < data_count; i++) {
+    state.ts_data[i] = ts_data[i];
+    state.selected_data[i] = false;
+  }
+
+  int screenWidth = 800;
+  int screenHeight = 800;
 
   InitWindow(screenWidth, screenHeight, "TimeCluster");
 
-  Camera2D camera = {0};
-  camera.zoom = 1.0f;
+  TraceLog(LOG_DEBUG, "Calculating half");
+  float min = 9999999;
+  float max = 0;
+  for (int i = 0; i < state.data_count; i++) {
+    if (state.ts_data[i] < min) {
+      min = state.ts_data[i];
+    }
 
-  state->camera1 = camera;
-  state->camera1.target = (Vector2){-500, state->ts_data[0] - 500};
+    if (state.ts_data[i] > max) {
+      max = state.ts_data[i];
+    }
+  }
+  float half = (max - min) / 2;
 
-  state->camera2 = camera;
-  state->camera2.target = (Vector2){-500, state->ts_data[0] - 500};
+  TraceLog(LOG_DEBUG, "Creating cameras");
 
-  state->drawing_mode = false;
-  state->selection = (Rectangle){0};
+  // TODO better default zoom
+  state.camera1 = (Camera2D){
+      .offset = {0, 0}, .target = {0, min + half}, .rotation = 0, .zoom = 1.0f};
 
-  // RenderTexture2D target = LoadRenderTexture(1920, 1080);
-  // SetTextureFilter(target.texture, TEXTURE_FILTER_BILINEAR);
+  state.camera2 = (Camera2D){
+      .offset = {0, 0}, .target = {0, min + half}, .rotation = 0, .zoom = 1.0f};
+
+  state.selection_mode = false;
+  state.selection = (Rectangle){0};
 
   SetTargetFPS(60);
+
+  TraceLog(LOG_DEBUG, "Initialized");
+
+  return state;
 }
 
 void draw_rectangle_lines(float x, float y, float width, float height,
@@ -57,9 +99,9 @@ void draw_dr_data(TimeClusterState *state) {
     if (i > 0)
       DrawLine((i - 1) * (RECT_SIZE + 2) + MIDDLE_RECT_POINT,
                state->ts_data[i - 1] + MIDDLE_RECT_POINT, x + MIDDLE_RECT_POINT,
-               y + MIDDLE_RECT_POINT, BLACK);
+               y + MIDDLE_RECT_POINT, FOREGROUND);
 
-    draw_rectangle_lines_ex(rec, BLACK);
+    draw_rectangle_lines_ex(rec, FOREGROUND);
   }
   for (int i = 0; i < state->data_count; i++) {
     if (!state->selected_data[i]) {
@@ -70,8 +112,8 @@ void draw_dr_data(TimeClusterState *state) {
     float y = state->ts_data[i];
 
     Rectangle rec = {x, y, RECT_SIZE, RECT_SIZE};
-    DrawRectangleRec(rec, YELLOW);
-    draw_rectangle_lines_ex(rec, BLACK);
+    DrawRectangleRec(rec, PRIMARY);
+    draw_rectangle_lines_ex(rec, FOREGROUND);
   }
 }
 
@@ -88,9 +130,9 @@ void draw_timeseries(TimeClusterState *state) {
     if (i > 0)
       DrawLine((i - 1) * (RECT_SIZE + 2) + MIDDLE_RECT_POINT,
                state->ts_data[i - 1] + MIDDLE_RECT_POINT, x + MIDDLE_RECT_POINT,
-               y + MIDDLE_RECT_POINT, BLACK);
+               y + MIDDLE_RECT_POINT, FOREGROUND);
 
-    draw_rectangle_lines_ex(rec, BLACK);
+    // draw_rectangle_lines_ex(rec, FOREGROUND);
   }
   for (int i = 0; i < state->data_count; i++) {
     if (!state->selected_data[i]) {
@@ -99,27 +141,20 @@ void draw_timeseries(TimeClusterState *state) {
 
     float x = i * (RECT_SIZE + 2);
 
-    Rectangle rec = {x-1, 0, RECT_SIZE+2, 999999};
-    DrawRectangleRec(rec, Fade(YELLOW, 0.5f));
+    Rectangle rec = {x - 1, 0, RECT_SIZE + 2, 999999};
+    DrawRectangleRec(rec, Fade(PRIMARY, 0.5f));
   }
 }
 
 void draw_hud(TimeClusterState *state) {
-  // char str[80];
-  // for (int i = 0; i < state->data_count; i++) {
-  //   sprintf(str, "%d: %d", i, state->selected_data[i]);
-  //   DrawText(str, 0, i * 22, 20, RED);
-  // }
-
+  DrawText(state->filePath, 0, 0, 42, BLACK);
   DrawLine(0, GetScreenHeight() / 2, GetScreenWidth(), GetScreenHeight() / 2,
-           BLACK);
+           FOREGROUND);
 }
 
-void handle_pan(Camera2D *camera, bool lock_y) {
-  if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
+void handle_pan(Camera2D *camera) {
+  if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
     Vector2 delta = GetMouseDelta();
-    if (lock_y)
-      delta.y = 0;
     delta = Vector2Scale(delta, -1.0f / camera->zoom);
 
     camera->target = Vector2Add(camera->target, delta);
@@ -143,28 +178,23 @@ void handle_zoom(Camera2D *camera) {
   }
 }
 
-void handle_selection(TimeClusterState *state, Camera2D camera) {
+// TODO inverted selection
+void handle_selection(TimeClusterState *state, Camera2D *camera) {
   Vector2 mousePosition = GetMousePosition();
-  Vector2 worldMousePosition = GetScreenToWorld2D(mousePosition, camera);
+  Vector2 worldMousePosition = GetScreenToWorld2D(mousePosition, *camera);
 
-  if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !state->drawing_mode) {
-    state->drawing_mode = true;
+  if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) && !state->selection_mode) {
+    state->selection_mode = true;
     state->selection.x = worldMousePosition.x;
     state->selection.y = worldMousePosition.y;
   }
 
-  if (state->drawing_mode) {
+  if (state->selection_mode) {
     state->selection.width = (worldMousePosition.x - state->selection.x);
     state->selection.height = (worldMousePosition.y - state->selection.y);
 
-    if (state->selection.width < MOUSE_SCALE_MARK_SIZE ||
-        state->selection.height < MOUSE_SCALE_MARK_SIZE) {
-      SetMousePosition(mousePosition.x + MOUSE_SCALE_MARK_SIZE,
-                       mousePosition.y + MOUSE_SCALE_MARK_SIZE);
-    }
-
-    if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-      state->drawing_mode = false;
+    if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT))
+      state->selection_mode = false;
 
     for (int i = 0; i < state->data_count; i++) {
       float x = i * (RECT_SIZE + 2);
@@ -177,45 +207,70 @@ void handle_selection(TimeClusterState *state, Camera2D camera) {
 }
 
 void draw_selection(TimeClusterState *state) {
-  if (state->drawing_mode) {
-    DrawRectangleRec(state->selection, Fade(BLUE, 0.2f));
+  if (state->selection_mode) {
+    DrawRectangleRec(state->selection, Fade(SECONDARY, 0.2f));
 
-    draw_rectangle_lines_ex(state->selection, BLUE);
+    draw_rectangle_lines_ex(state->selection, SECONDARY);
     // TODO draw a fixed sized triangle independent from camera.zoom
-    DrawTriangle((Vector2){state->selection.x + state->selection.width -
-                               MOUSE_SCALE_MARK_SIZE,
-                           state->selection.y + state->selection.height},
-                 (Vector2){state->selection.x + state->selection.width,
-                           state->selection.y + state->selection.height},
-                 (Vector2){state->selection.x + state->selection.width,
-                           state->selection.y + state->selection.height -
-                               MOUSE_SCALE_MARK_SIZE},
-                 BLUE);
+    // DrawTriangle((Vector2){state->selection.x + state->selection.width -
+    //                            MOUSE_SCALE_MARK_SIZE,
+    //                        state->selection.y + state->selection.height},
+    //              (Vector2){state->selection.x + state->selection.width,
+    //                        state->selection.y + state->selection.height},
+    //              (Vector2){state->selection.x + state->selection.width,
+    //                        state->selection.y + state->selection.height -
+    //                            MOUSE_SCALE_MARK_SIZE},
+    //              SECONDARY);
   }
 }
 
-void draw(TimeClusterState *state) {
+void handle_hud(TimeClusterState *state) {
+  // TODO resize panels
+}
+
+void handle_drop(TimeClusterState *state) {
+  if (IsFileDropped()) {
+    FilePathList droppedFiles = LoadDroppedFiles();
+
+    if (droppedFiles.count > 1) {
+      TraceLog(LOG_ERROR, "Too many files!");
+      UnloadDroppedFiles(droppedFiles);
+      return;
+    }
+    TextCopy(state->filePath, droppedFiles.paths[0]);
+    UnloadDroppedFiles(droppedFiles);
+  }
+}
+
+void handle_resize(TimeClusterState *state) {
+  state->camera1.offset = (Vector2){0, GetScreenHeight() / 4};
+  state->camera2.offset = (Vector2){0, GetScreenHeight() / 4 * 3};
+}
+
+void render(TimeClusterState *state) {
+  // select current camera
   int mouse_in_panel = 0;
+  Camera2D *current_camera = NULL;
   if (GetMousePosition().y < (GetScreenHeight() / 2.0f)) {
     mouse_in_panel = 1;
-  } else {
-    mouse_in_panel = 2;
-  }
-
-  Camera2D *current_camera = NULL;
-  if (mouse_in_panel == 1) {
     current_camera = &state->camera1;
   } else {
+    mouse_in_panel = 2;
     current_camera = &state->camera2;
   }
 
-  handle_pan(current_camera, mouse_in_panel == 1);
+  // update
+  handle_pan(current_camera);
   handle_zoom(current_camera);
-  handle_selection(state, *current_camera);
+  handle_selection(state, current_camera);
+  handle_hud(state);
+  handle_drop(state);
+  handle_resize(state);
 
+  // draw
   BeginDrawing();
   {
-    ClearBackground(WHITE);
+    ClearBackground(BACKGROUND);
 
     // first panel
     BeginScissorMode(0, 0, GetScreenWidth(), GetScreenHeight() / 2);

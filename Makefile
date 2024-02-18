@@ -4,10 +4,10 @@ CFLAGS=-Wall -Wextra
 
 build: build/timecluster
 
-build/timecluster: src/timecluster.c build/libdraw.so
+build/timecluster: src/timecluster.c build/librender.so
 	$(CC) $(CFLAGS) -o $@ $< $(LIBS) -ldl
 
-build/libdraw.so: src/draw.c src/draw.h
+build/librender.so: src/render.c src/render.h
 	$(CC) $(CFLAGS) -o $@ $< $(LIBS) -fPIC -shared
 
 run: build
