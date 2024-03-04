@@ -1,5 +1,6 @@
 #include "render.h"
 
+#include <python3.11/Python.h>
 #include <raylib.h>
 #include <raymath.h>
 #include <rlgl.h>
@@ -208,6 +209,64 @@ void handle_hud(TimeClusterState *state) {
 
 void load_file(TimeClusterState *state) {
   TraceLog(LOG_DEBUG, "Loading file");
+
+  PyObject *pName, *pModule, *pDict, *pFunc, *pValue, *pArgs;
+  Py_Initialize();
+  PyObject *sys = PyImport_ImportModule("sys");
+  PyObject *path = PyObject_GetAttrString(sys, "path");
+  PyList_Append(path, PyUnicode_FromString("."));
+  pName = PyUnicode_FromString("py_function");
+  pModule = PyImport_Import(pName);
+  if (!pModule) {
+    PyErr_Print();
+    printf("ERROR in pModule\n");
+    exit(1);
+  }
+  pDict = PyModule_GetDict(pModule);
+  pFunc = PyDict_GetItemString(pDict, "multiply");
+  if (PyCallable_Check(pFunc)) {
+    // Prepare the argument list for the call
+    pArgs = PyTuple_New(2);
+    pValue = PyLong_FromLong(6);
+    if (!pValue) {
+      PyErr_Print();
+      return;
+    }
+    PyTuple_SetItem(pArgs, 0, pValue);
+
+    pValue = PyLong_FromLong(7);
+    if (!pValue) {
+      PyErr_Print();
+      return;
+    }
+    PyTuple_SetItem(pArgs, 1, pValue);
+
+    pValue = PyObject_CallObject(pFunc, pArgs);
+
+    if (pArgs != NULL) {
+      Py_DECREF(pArgs);
+    }
+
+    if (pValue != NULL) {
+      int size = PySequence_Size(pValue);
+      int values[size];
+
+      for (int i = 0; i < size; i++) {
+        PyObject *value = PySequence_GetItem(pValue, i);
+        if (value != NULL) {
+          printf("Return of call : %d\n", PyLong_AsLong(value));
+        }
+      }
+      Py_DECREF(pValue);
+    } else {
+      PyErr_Print();
+    }
+  }
+  // Clean up
+  Py_DECREF(pModule);
+  Py_DECREF(pName);
+  Py_Finalize();
+
   int data_count = 4;
   float ts_data[] = {113677.0f, 113657.0f, 113644.0f, 113664.0f};
 
@@ -221,7 +280,7 @@ void load_file(TimeClusterState *state) {
     state->selected_data[i] = false;
   }
   TraceLog(LOG_DEBUG, "File loaded");
-  
+
   TraceLog(LOG_DEBUG, "Calculating min, max and half");
   float min = 9999999;
   float max = 0;

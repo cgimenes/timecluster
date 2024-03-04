@@ -1,5 +1,5 @@
 CC=clang
-LIBS=-lraylib
+LIBS=-lraylib -lpython3.11
 CFLAGS=-Wall -Wextra -ggdb
 
 build: build/timecluster
