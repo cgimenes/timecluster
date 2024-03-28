@@ -1,4 +1,3 @@
-def multiply(a, b):
-    c = a * b
-    print(f"The result of {a} x {b}:", c)
-    return [a, b, c]
+def load_file(path):
+    print(f"Path: {path}")
+    return [1000, 2000, 3000]

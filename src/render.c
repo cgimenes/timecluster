@@ -1,6 +1,7 @@
 #include "render.h"
 
 #include <python3.11/Python.h>
+#include <python3.11/longobject.h>
 #include <raylib.h>
 #include <raymath.h>
 #include <rlgl.h>
@@ -123,9 +124,17 @@ void draw_timeseries(TimeClusterState *state) {
 }
 
 void draw_hud(TimeClusterState *state) {
-  DrawText(state->filePath, 0, 0, 20, BLACK);
-  DrawLine(0, GetScreenHeight() / 2, GetScreenWidth(), GetScreenHeight() / 2,
-           FOREGROUND);
+  if (strcmp(state->filePath, "") != 0) {
+    DrawText(state->filePath, 0, 0, 20, BLACK);
+    DrawLine(0, GetScreenHeight() / 2, GetScreenWidth(), GetScreenHeight() / 2,
+             FOREGROUND);
+  } else {
+    Vector2 textSize =
+        MeasureTextEx(GetFontDefault(), "Drag a file here", 40, 0);
+    int x = GetScreenWidth() / 2 - textSize.x / 2;
+    int y = GetScreenHeight() / 2 - textSize.y / 2;
+    DrawText("Drag a file here", x, y, 40, BLACK);
+  }
 
   DrawFPS(GetScreenWidth() - MeasureText("60 FPS", 20) - 5, 5);
 }
@@ -223,23 +232,16 @@ void load_file(TimeClusterState *state) {
     exit(1);
   }
   pDict = PyModule_GetDict(pModule);
-  pFunc = PyDict_GetItemString(pDict, "multiply");
+  pFunc = PyDict_GetItemString(pDict, "load_file");
   if (PyCallable_Check(pFunc)) {
     // Prepare the argument list for the call
-    pArgs = PyTuple_New(2);
-    pValue = PyLong_FromLong(6);
+    pArgs = PyTuple_New(1);
+    pValue = PyUnicode_FromString(state->filePath);
     if (!pValue) {
       PyErr_Print();
       return;
     }
     PyTuple_SetItem(pArgs, 0, pValue);
-
-    pValue = PyLong_FromLong(7);
-    if (!pValue) {
-      PyErr_Print();
-      return;
-    }
-    PyTuple_SetItem(pArgs, 1, pValue);
 
     pValue = PyObject_CallObject(pFunc, pArgs);
 
@@ -251,10 +253,16 @@ void load_file(TimeClusterState *state) {
       int size = PySequence_Size(pValue);
       int values[size];
 
+      state->ts_data = malloc(size * sizeof(float));
+      state->dr_data = malloc(size * sizeof(Vector2));
+      state->selected_data = malloc(size * sizeof(bool));
+      state->data_count = size;
+
       for (int i = 0; i < size; i++) {
         PyObject *value = PySequence_GetItem(pValue, i);
         if (value != NULL) {
-          printf("Return of call : %d\n", PyLong_AsLong(value));
+          state->ts_data[i] = PyLong_AsLong(value);
+          state->selected_data[i] = false;
         }
       }
       Py_DECREF(pValue);
@@ -262,42 +270,18 @@ void load_file(TimeClusterState *state) {
       PyErr_Print();
     }
   }
-  // Clean up
+
   Py_DECREF(pModule);
   Py_DECREF(pName);
   Py_Finalize();
 
-  int data_count = 4;
-  float ts_data[] = {113677.0f, 113657.0f, 113644.0f, 113664.0f};
-
-  state->ts_data = malloc(data_count * sizeof(float));
-  state->dr_data = malloc(data_count * sizeof(Vector2));
-  state->selected_data = malloc(data_count * sizeof(bool));
-  state->data_count = data_count;
-
-  for (int i = 0; i < data_count; i++) {
-    state->ts_data[i] = ts_data[i];
-    state->selected_data[i] = false;
-  }
   TraceLog(LOG_DEBUG, "File loaded");
 
-  TraceLog(LOG_DEBUG, "Calculating min, max and half");
-  float min = 9999999;
-  float max = 0;
-  for (int i = 0; i < state->data_count; i++) {
-    if (state->ts_data[i] < min) {
-      min = state->ts_data[i];
-    }
-
-    if (state->ts_data[i] > max) {
-      max = state->ts_data[i];
-    }
-  }
-  float half = (max - min) / 2;
-
-  TraceLog(LOG_DEBUG, "Updating camera");
-  state->camera1.target = (Vector2){0, min + half};
-  state->camera2.target = (Vector2){0, min + half};
+  // float half = (max - min) / 2;
+  //
+  // TraceLog(LOG_DEBUG, "Updating camera");
+  // state->camera1.target = (Vector2){0, min + half};
+  // state->camera2.target = (Vector2){0, min + half};
 }
 
 void handle_drop(TimeClusterState *state) {
