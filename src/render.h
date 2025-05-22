@@ -14,7 +14,7 @@ typedef struct TimeClusterState {
   bool selection_mode;
   Rectangle selection;
   int *selected_data;
-  char filePath[MAX_FILEPATH_SIZE];
+  char *filePath[MAX_FILEPATH_SIZE];
 } TimeClusterState;
 
 typedef void (*render_t)(TimeClusterState *state);

@@ -221,7 +221,7 @@ void load_file(TimeClusterState *state) {
     state->selected_data[i] = false;
   }
   TraceLog(LOG_DEBUG, "File loaded");
-  
+
   TraceLog(LOG_DEBUG, "Calculating min, max and half");
   float min = 9999999;
   float max = 0;

@@ -8,10 +8,11 @@ build/timecluster: src/timecluster.c build/librender.so
 	$(CC) $(CFLAGS) -o $@ $< $(LIBS) -ldl
 
 build/librender.so: src/render.c src/render.h
+	-mkdir build
 	$(CC) $(CFLAGS) -o $@ $< $(LIBS) -fPIC -shared
 
 run: build
-	LD_LIBRARY_PATH=./build/ build/timecluster
+	DYLD_LIBRARY_PATH=./build/ build/timecluster
 
 watch: build
 	make run &
@@ -21,4 +22,4 @@ watch: build
 	done
 
 clean:
-	@rm build/timecluster build/*.o build/*.so
+	-rm build/timecluster build/*.o build/*.so
